@@ -28,13 +28,19 @@ export class WorkspacesService {
       }
 
       // Create new workspace
-      const workspace : WorkspaceResponseDto  = null as unknown as WorkspaceResponseDto;
+      const workspace = await this.prisma.workspace.create({
+        data: {
+          name: dto.name,
+          ownerId: dto.ownerId,
+        },
+      });
 
       return this.toResponseDto(workspace);
     } catch (error) {
       throw new RpcException({
         code: 13, // INTERNAL
         message: 'Failed to create workspace',
+        error: error.message,
       });
     }
   }
