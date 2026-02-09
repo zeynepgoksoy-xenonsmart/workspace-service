@@ -1,27 +1,74 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+}
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model Workspace {
-  id        String    @id @default(uuid())
-  name      String
-  ownerId   String    // accountId
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  name        String
+  ownerId     String    @map("owner_id")  // ← EKLE
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")  // ← EKLE
+  updatedAt   DateTime  @updatedAt @map("updated_at")  // ← EKLE
+  deletedAt   DateTime? @map("deleted_at")  // ← EKLE
+  
+  // Feature flags
+  
+  // Relations
+  parameters WorkspaceParameter[]
+  snapshots  WorkspaceSnapshot[]
   
   @@index([ownerId])
-  @@index([isDeleted])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@map("workspaces")
+}
+
+model WorkspaceParameter {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")  // ← EKLE
+  name        String
+  data        Json
+  isActive    Boolean  @default(true) @map("is_active")  // ← EKLE
+  createdAt   DateTime @default(now()) @map("created_at")  // ← EKLE
+  updatedAt   DateTime @updatedAt @map("updated_at")  // ← EKLE
+  
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@index([name])
+  @@map("workspace_parameters")  // ← EKLE
+}
+
+model WorkspaceSnapshot {
+  id                  String    @id @default(uuid())
+  workspaceId         String    @map("workspace_id")  // ← EKLE
+  correlationId       String?   @map("correlation_id")  // ← EKLE
+  correlationType     String?   @map("correlation_type")  // ← EKLE
+  
+  // Snapshot Content
+  workspaceSnapshot   Json      @map("workspace_snapshot")  // ← EKLE
+  parametersSnapshot  Json      @map("parameters_snapshot")  // ← EKLE
+  
+  // Metadata
+  snapshotReason      String?   @map("snapshot_reason")  // ← EKLE
+  usedForCompensation Boolean   @default(false) @map("used_for_compensation")  // ← EKLE
+  compensatedAt       DateTime? @map("compensated_at")  // ← EKLE
+  expiresAt           DateTime? @map("expires_at")  // ← EKLE
+  
+  createdAt           DateTime  @default(now()) @map("created_at")  // ← EKLE
+  
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  @@index([workspaceId])
+  @@index([correlationId, correlationType])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@index([usedForCompensation, createdAt])
+  @@map("workspace_snapshots")  // ← EKLE
 }

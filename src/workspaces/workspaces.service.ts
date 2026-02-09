@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { WorkspaceResponseDto } from './workspace-response.dto';
@@ -18,12 +19,11 @@ export class WorkspacesService {
         where: {
           ownerId: dto.ownerId,
           name: dto.name,
-          isDeleted: false,
         },
       });
 
       if (existing) {
-        return existing;
+        return this.toResponseDto(existing);
       }
 
       // Create new workspace
@@ -34,9 +34,47 @@ export class WorkspacesService {
         },
       });
 
-      return workspace;
+      // Create workspace parameters if provided
+      if (dto.address || dto.country) {
+        const parametersToCreate: Array<{
+          workspaceId: string;
+          name: string;
+          data: { value: string };
+          isActive: boolean;
+        }> = [];
+
+        if (dto.address) {
+          parametersToCreate.push({
+            workspaceId: workspace.id,
+            name: 'address',
+            data: { value: dto.address },
+            isActive: true,
+          });
+        }
+
+        if (dto.country) {
+          parametersToCreate.push({
+            workspaceId: workspace.id,
+            name: 'country',
+            data: { value: dto.country },
+            isActive: true,
+          });
+        }
+
+        if (parametersToCreate.length > 0) {
+          await (this.prisma as any).workspaceParameter.createMany({
+            data: parametersToCreate as any,
+          });
+        }
+      }
+
+      return this.toResponseDto(workspace);
     } catch (error) {
-      throw new ConflictException('Failed to create workspace');
+      throw new RpcException({
+        code: 13, // INTERNAL
+        message: 'Failed to create workspace',
+        error: error.message,
+      });
     }
   }
 
@@ -50,23 +88,21 @@ export class WorkspacesService {
     });
 
     if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'Workspace not found',
+      });
     }
 
-    // Idempotent: if already deleted, return it
-    if (workspace.isDeleted) {
-      return workspace;
-    }
 
     const deleted = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: {
-        isDeleted: true,
         deletedAt: new Date(),
       },
     });
 
-    return deleted;
+    return this.toResponseDto(deleted);
   }
 
   /**
@@ -78,18 +114,20 @@ export class WorkspacesService {
     });
 
     if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'Workspace not found',
+      });
     }
 
     const restored = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: {
-        isDeleted: false,
         deletedAt: null,
       },
     });
 
-    return restored;
+    return this.toResponseDto(restored);
   }
 
   /**
@@ -101,10 +139,13 @@ export class WorkspacesService {
     });
 
     if (!workspace) {
-      throw new NotFoundException('Workspace not found');
+      throw new RpcException({
+        code: 5, // NOT_FOUND
+        message: 'Workspace not found',
+      });
     }
 
-    return workspace;
+    return this.toResponseDto(workspace);
   }
 
   /**
@@ -114,14 +155,13 @@ export class WorkspacesService {
     const workspaces = await this.prisma.workspace.findMany({
       where: {
         ownerId,
-        isDeleted: false,
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    return workspaces;
+    return workspaces.map(workspace => this.toResponseDto(workspace));
   }
 
   /**
@@ -138,6 +178,29 @@ export class WorkspacesService {
       },
     });
 
-    return workspaces;
+    return workspaces.map(workspace => this.toResponseDto(workspace));
+  }
+
+  /**
+   * Prisma model'den DTO'ya dönüştürme helper
+   */
+  private toResponseDto(workspace: any): WorkspaceResponseDto {
+    return {
+      id: workspace.id,
+      name: workspace.name,
+      ownerId: workspace.ownerId,
+      isDeleted: workspace.isDeleted,
+      deletedAt: workspace.deletedAt 
+        ? (workspace.deletedAt instanceof Date 
+            ? workspace.deletedAt.toISOString() 
+            : new Date(workspace.deletedAt).toISOString())
+        : null,
+      createdAt: workspace.createdAt instanceof Date 
+        ? workspace.createdAt.toISOString() 
+        : new Date(workspace.createdAt).toISOString(),
+      updatedAt: workspace.updatedAt instanceof Date 
+        ? workspace.updatedAt.toISOString() 
+        : new Date(workspace.updatedAt).toISOString(),
+    };
   }
 }

@@ -6,7 +6,7 @@ import "dotenv/config"; // env dosyasını yükle
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
-    super(); // Prisma 7'de artık boş constructor kullan
+    super(); 
   }
 
   async onModuleInit() {

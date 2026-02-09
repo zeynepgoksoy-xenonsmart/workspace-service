@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsUUID, IsOptional } from 'class-validator';
 
 export class CreateWorkspaceDto {
   @IsString()
@@ -8,4 +8,12 @@ export class CreateWorkspaceDto {
   @IsUUID()
   @IsNotEmpty()
   ownerId: string; // accountId from account-service
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
 }
