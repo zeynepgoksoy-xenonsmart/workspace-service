@@ -29,6 +29,8 @@ export class WorkspacesController {
     const createDto: CreateWorkspaceDto = {
       name: data.name,
       ownerId: data.ownerId,
+      address: data.address,
+      country: data.country,
     };
     return this.workspacesService.createWorkspace(createDto);
   }

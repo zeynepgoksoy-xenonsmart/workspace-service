@@ -11,8 +11,15 @@ async function bootstrap() {
       url: '0.0.0.0:50052',
       package: 'workspace',
       protoPath: join(__dirname, '../../../proto/workspace.proto'),
-    }
-  })
+      loader: {
+        keepCase: true,
+        longs: String,
+        enums: String,
+        defaults: true,
+        oneofs: true,
+      },
+    },
+  });
   await app.listen();
 }
 bootstrap();

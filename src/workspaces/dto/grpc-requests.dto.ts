@@ -12,6 +12,14 @@ export class CreateWorkspaceRequest {
   @IsUUID()
   @IsNotEmpty()
   ownerId: string; // accountId from account-service
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  country?: string;
 }
 
 /**

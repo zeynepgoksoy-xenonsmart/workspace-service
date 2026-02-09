@@ -19,7 +19,6 @@ export class WorkspacesService {
         where: {
           ownerId: dto.ownerId,
           name: dto.name,
-          isDeleted: false,
         },
       });
 
@@ -34,6 +33,40 @@ export class WorkspacesService {
           ownerId: dto.ownerId,
         },
       });
+
+      // Create workspace parameters if provided
+      if (dto.address || dto.country) {
+        const parametersToCreate: Array<{
+          workspaceId: string;
+          name: string;
+          data: { value: string };
+          isActive: boolean;
+        }> = [];
+
+        if (dto.address) {
+          parametersToCreate.push({
+            workspaceId: workspace.id,
+            name: 'address',
+            data: { value: dto.address },
+            isActive: true,
+          });
+        }
+
+        if (dto.country) {
+          parametersToCreate.push({
+            workspaceId: workspace.id,
+            name: 'country',
+            data: { value: dto.country },
+            isActive: true,
+          });
+        }
+
+        if (parametersToCreate.length > 0) {
+          await (this.prisma as any).workspaceParameter.createMany({
+            data: parametersToCreate as any,
+          });
+        }
+      }
 
       return this.toResponseDto(workspace);
     } catch (error) {
@@ -61,15 +94,10 @@ export class WorkspacesService {
       });
     }
 
-    // Idempotent: if already deleted, return it
-    if (workspace.isDeleted) {
-      return this.toResponseDto(workspace);
-    }
 
     const deleted = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: {
-        isDeleted: true,
         deletedAt: new Date(),
       },
     });
@@ -95,7 +123,6 @@ export class WorkspacesService {
     const restored = await this.prisma.workspace.update({
       where: { id: workspaceId },
       data: {
-        isDeleted: false,
         deletedAt: null,
       },
     });
@@ -128,7 +155,6 @@ export class WorkspacesService {
     const workspaces = await this.prisma.workspace.findMany({
       where: {
         ownerId,
-        isDeleted: false,
       },
       orderBy: {
         createdAt: 'desc',

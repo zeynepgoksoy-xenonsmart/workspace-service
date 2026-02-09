@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -8,24 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================
-// CORE MODELS
-// ============================================
-
 model Workspace {
   id          String    @id @default(uuid())
   name        String
-  ownerId     String
+  ownerId     String    @map("owner_id")  // ← EKLE
   description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  createdAt   DateTime  @default(now()) @map("created_at")  // ← EKLE
+  updatedAt   DateTime  @updatedAt @map("updated_at")  // ← EKLE
+  deletedAt   DateTime? @map("deleted_at")  // ← EKLE
   
   // Feature flags
-  isDeleted   Boolean   @default(false)
-  isGeneral   Boolean   @default(false)
-  isWorkspace Boolean   @default(false)
-  isZone      Boolean   @default(true)
   
   // Relations
   parameters WorkspaceParameter[]
@@ -33,52 +24,44 @@ model Workspace {
   
   @@index([ownerId])
   @@index([deletedAt])
-  @@index([isDeleted])
   @@index([createdAt])
   @@map("workspaces")
 }
 
-// ============================================
-// DYNAMIC PARAMETERS
-// ============================================
-
 model WorkspaceParameter {
   id          String   @id @default(uuid())
-  workspaceId String
-  name        String   // "theme", "settings", "metadata" vb.
-  data        Json     // { value: {...}, type: "..." }
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  workspaceId String   @map("workspace_id")  // ← EKLE
+  name        String
+  data        Json
+  isActive    Boolean  @default(true) @map("is_active")  // ← EKLE
+  createdAt   DateTime @default(now()) @map("created_at")  // ← EKLE
+  updatedAt   DateTime @updatedAt @map("updated_at")  // ← EKLE
   
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
   @@unique([workspaceId, name])
   @@index([workspaceId])
   @@index([name])
+  @@map("workspace_parameters")  // ← EKLE
 }
-
-// ============================================
-// SNAPSHOT for SAGA COMPENSATION
-// ============================================
 
 model WorkspaceSnapshot {
   id                  String    @id @default(uuid())
-  workspaceId         String
-  correlationId       String?
-  correlationType     String?
+  workspaceId         String    @map("workspace_id")  // ← EKLE
+  correlationId       String?   @map("correlation_id")  // ← EKLE
+  correlationType     String?   @map("correlation_type")  // ← EKLE
   
   // Snapshot Content
-  workspaceSnapshot   Json
-  parametersSnapshot  Json
+  workspaceSnapshot   Json      @map("workspace_snapshot")  // ← EKLE
+  parametersSnapshot  Json      @map("parameters_snapshot")  // ← EKLE
   
   // Metadata
-  snapshotReason      String?
-  usedForCompensation Boolean   @default(false)
-  compensatedAt       DateTime?
-  expiresAt           DateTime?
+  snapshotReason      String?   @map("snapshot_reason")  // ← EKLE
+  usedForCompensation Boolean   @default(false) @map("used_for_compensation")  // ← EKLE
+  compensatedAt       DateTime? @map("compensated_at")  // ← EKLE
+  expiresAt           DateTime? @map("expires_at")  // ← EKLE
   
-  createdAt           DateTime  @default(now())
+  createdAt           DateTime  @default(now()) @map("created_at")  // ← EKLE
   
   workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
@@ -87,4 +70,5 @@ model WorkspaceSnapshot {
   @@index([createdAt])
   @@index([expiresAt])
   @@index([usedForCompensation, createdAt])
+  @@map("workspace_snapshots")  // ← EKLE
 }
